@@ -1,85 +1,78 @@
-# Mountain Name Recognition
+# Mountain NER
 
-This project aims to fine-tune a BERT model for Named Entity Recognition (NER) to detect mountain names in text. The model is trained on a dataset of sentences containing mountain names and is capable of predicting the names of mountains in new sentences.
+Fine-tuned BERT (`bert-base-cased`) for named entity recognition of mountain names in English text.
+Labels follow the BIO scheme: `O`, `B-MOUNTAIN`, `I-MOUNTAIN`.
 
-## Project Structure
+## Project structure
 
 ```
 mountain-ner/
-├── .env                  # OPENAI_API_KEY (only for dataset_creation.ipynb)
-├── dataset_creation.ipynb
-├── train_model.py
-├── inference.py
-├── demo.ipynb
-├── requirements.txt
-├── README.md
 ├── data/
-│   └── mountain_sentences.csv
-
+│   ├── mountain_sentences.csv   # ~1000 sentences, one mountain each (scraped names + GPT sentences)
+│   └── negative_sentences.csv   # ~200 sentences without mountains (empty `mountain`)
+├── dataset_creation.ipynb       # scrapes mountain names and generates sentences with OpenAI
+├── train_model.py               # fine-tuning + evaluation on a held-out test split
+├── inference.py                 # CLI / Python API for predictions
+├── demo.ipynb                   # usage examples
+└── requirements.txt
 ```
 
 ## Setup
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/Oleksandr190378/mountain-ner.git
-   cd mountain-ner
-   ```
+```bash
+git clone https://github.com/Oleksandr190378/mountain-ner.git
+cd mountain-ner
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+`.env` with `OPENAI_API_KEY` is only needed to regenerate the dataset in `dataset_creation.ipynb`.
 
-3. **Set up environment variables in `.env`**.
+## Training
 
-## Usage
+```bash
+python train_model.py            # see --help for epochs, batch size, base model, etc.
+```
 
-### Option 1: Using the Pre-trained Model
+The data is split 80/10/10 (train/validation/test, stratified by presence of a mountain).
+The best checkpoint by validation F1 is saved to `model/mountain_ner_bert/` together with
+`test_metrics.json`. Training takes ~7 minutes on a 2-core CPU; a GPU makes it a matter of a minute.
 
-If you want to use the pre-trained model and tokenizer, follow these steps:
+## Results
 
-1. **Load the pre-trained model and tokenizer**:
-   - Link: Model Weights on Google Drive
-   - Download and place  in the model/mountain_ner_bert directory.
+Entity-level metrics (`seqeval`) on the held-out test split:
 
-2. **Make predictions**:
-   - Use the `inference.py` script to make predictions on new sentences.
+| Split | Sentences | Precision | Recall | F1 |
+|---|---|---|---|---|
+| Validation (best epoch) | 119 | 0.990 | 0.980 | 0.985 |
+| Test | 120 | 0.990 | 1.000 | 0.995 |
 
-3. **Interactive demo**:
-   - Run `demo.ipynb` for an interactive demonstration of the model's capabilities.
+3 epochs, batch size 16, learning rate 3e-5, `bert-base-cased`.
 
-### Option 2: Training a Custom Model
+The test split comes from the same synthetic distribution as the training data, so these numbers
+overestimate performance on real-world text. Known limitations seen on hand-written examples:
 
-If you want to create a custom dataset and train your own model, follow these steps:
+- every positive training sentence contains exactly one mountain, so the second mountain in a
+  sentence is sometimes missed (e.g. "...looked at the Matterhorn");
+- multi-word names not seen in training can be cut (e.g. "Fitz Roy" -> "Roy");
+- short names such as "K2" get low confidence.
 
-1. **Create dataset**:
-   - Run `dataset_creation.ipynb` to generate a dataset of sentences containing mountain names.
-   - The dataset will be saved to `data/mountain_sentences.csv`.
+More varied data (several mountains per sentence, names mid-sentence) is the main way to improve it.
 
-2. **Train model**:
-   - Execute `python train_model.py` to train the BERT model on your custom dataset.
-   - The trained model and tokenizer will be saved to `model/mountain_ner_bert/`.
+## Inference
 
-3. **Make predictions**:
-   - Use the `inference.py` script to make predictions on new sentences using your custom model.
+```bash
+python inference.py "We climbed Mont Blanc and then looked at the Matterhorn."
+```
 
-## Model
+```python
+from inference import load_pipeline, predict_mountains
 
-We use a fine-tuned BERT model for token classification to identify mountain names in text. The model and tokenizer are saved in the `model/` directory after training.
-
-## Data
-
-The dataset is created using a combination of web scraping and ChatGPT-generated sentences containing mountain names. The final dataset is stored in `data/mountain_sentences.csv`.
-
-## Customization
-
-This project can be extended to recognize other types of named entities by generating a corresponding dataset using OpenAI's model and adjusting the `prepare_data` function in `train_model.py`.
-
-## Requirements
-
-See `requirements.txt` for a list of dependencies.
+ner = load_pipeline()  # or load_pipeline("path/or/hub-id")
+predict_mountains("Denali is the highest peak in North America.", ner)
+# [{'mountain': 'Denali', 'score': 0.99, 'start': 0, 'end': 6}]
+```
 
 ## License
 
-This project is licensed under the MIT License.
+MIT
