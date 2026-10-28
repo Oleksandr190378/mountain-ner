@@ -3,10 +3,12 @@ from pathlib import Path
 
 from transformers import pipeline
 
-DEFAULT_MODEL_DIR = Path(__file__).resolve().parent / "model" / "mountain_ner_bert"
+HUB_MODEL_ID = "Oleks333/mountain-ner-bert"
+LOCAL_MODEL_DIR = Path(__file__).resolve().parent / "model" / "mountain_ner_bert"
+DEFAULT_MODEL = LOCAL_MODEL_DIR if LOCAL_MODEL_DIR.exists() else HUB_MODEL_ID
 
 
-def load_pipeline(model=DEFAULT_MODEL_DIR):
+def load_pipeline(model=DEFAULT_MODEL):
     return pipeline("token-classification", model=str(model), aggregation_strategy="first")
 
 
@@ -22,7 +24,7 @@ def predict_mountains(text, ner=None):
 def main():
     parser = argparse.ArgumentParser(description="Find mountain names in text.")
     parser.add_argument("text", nargs="*", help="Sentence(s) to analyze")
-    parser.add_argument("--model", default=str(DEFAULT_MODEL_DIR), help="Local model directory or Hugging Face Hub id")
+    parser.add_argument("--model", default=str(DEFAULT_MODEL), help="Local model directory or Hugging Face Hub id")
     args = parser.parse_args()
 
     ner = load_pipeline(args.model)
