@@ -4,8 +4,9 @@
 # ignore folder myvenv
 myenv/
 # ignore folder model/mountain_ner_bert/
-model/mountain_ner_bert/
+model/
 
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+
