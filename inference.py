@@ -3,10 +3,19 @@ from pathlib import Path
 
 from transformers import pipeline
 
-DEFAULT_MODEL_DIR = Path(__file__).resolve().parent / "model" / "mountain_ner_bert"
+HUB_MODEL_ID = "Oleks333/mountain-ner-bert"
+LOCAL_MODEL_DIR = Path(__file__).resolve().parent / "model" / "mountain_ner_bert"
+WEIGHT_FILES = ("model.safetensors", "pytorch_model.bin")
 
 
-def load_pipeline(model=DEFAULT_MODEL_DIR):
+def resolve_model():
+    """Local trained model if it has weights, otherwise the Hugging Face Hub model."""
+    has_weights = any((LOCAL_MODEL_DIR / f).exists() for f in WEIGHT_FILES)
+    return LOCAL_MODEL_DIR if has_weights else HUB_MODEL_ID
+
+
+def load_pipeline(model=None):
+    model = model or resolve_model()
     return pipeline("token-classification", model=str(model), aggregation_strategy="first")
 
 
@@ -22,7 +31,7 @@ def predict_mountains(text, ner=None):
 def main():
     parser = argparse.ArgumentParser(description="Find mountain names in text.")
     parser.add_argument("text", nargs="*", help="Sentence(s) to analyze")
-    parser.add_argument("--model", default=str(DEFAULT_MODEL_DIR), help="Local model directory or Hugging Face Hub id")
+    parser.add_argument("--model", help=f"Local model directory or Hub id (default: model/mountain_ner_bert/ if trained, else {HUB_MODEL_ID})")
     args = parser.parse_args()
 
     ner = load_pipeline(args.model)

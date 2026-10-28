@@ -1,6 +1,7 @@
 # Mountain NER
 
 Fine-tuned BERT (`bert-base-cased`) for named entity recognition of mountain names in English text.
+Weights: [Oleks333/mountain-ner-bert](https://huggingface.co/Oleks333/mountain-ner-bert) on the Hugging Face Hub.
 Labels follow the BIO scheme: `O`, `B-MOUNTAIN`, `I-MOUNTAIN`.
 
 ## Project structure
@@ -61,6 +62,8 @@ More varied data (several mountains per sentence, names mid-sentence) is the mai
 
 ## Inference
 
+No training needed: without a local `model/mountain_ner_bert/` the Hub model is downloaded automatically.
+
 ```bash
 python inference.py "We climbed Mont Blanc and then looked at the Matterhorn."
 ```
@@ -68,7 +71,7 @@ python inference.py "We climbed Mont Blanc and then looked at the Matterhorn."
 ```python
 from inference import load_pipeline, predict_mountains
 
-ner = load_pipeline()  # or load_pipeline("path/or/hub-id")
+ner = load_pipeline()  # local model/mountain_ner_bert/ if present, else the Hub model
 predict_mountains("Denali is the highest peak in North America.", ner)
 # [{'mountain': 'Denali', 'score': 0.99, 'start': 0, 'end': 6}]
 ```
